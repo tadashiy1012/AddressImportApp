@@ -11,21 +11,44 @@ class HttpClient {
 
     companion object {
 
-        private fun _get(url: String): ResponseBody? {
+
+        private fun _get(url: String): Response? {
             val client = OkHttpClient()
             val req = Request.Builder()
                 .url(url).build()
             val resp = client.newCall(req).execute()
-            Log.i("yama", "status " + resp.code)
-            return resp.body
+            Log.i("HttpClient","status: ${resp.code} ${url}")
+            return resp
         }
 
-        fun get(url: String): Deferred<ResponseBody> {
-            return GlobalScope.async {
+        suspend fun get(url: String): Deferred<Response> = coroutineScope {
+            async(Dispatchers.Default) {
+                _get(url).let {
+                    when (it == null) {
+                        true -> throw  Exception("error for $url")
+                        else -> it
+                    }
+                }
+            }
+        }
+
+        suspend fun get(url: String, key: AppKeys?): Deferred<Pair<AppKeys?, Response>> = coroutineScope {
+            async(Dispatchers.Default) {
                 _get(url).let {
                     when (it == null) {
                         true -> throw Exception("error for $url")
-                        else -> it
+                        else -> Pair(key ?: null, it)
+                    }
+                }
+            }
+        }
+
+        suspend fun get(url: String, key: SectionKeys?): Deferred<Pair<SectionKeys?, Response>> = coroutineScope {
+            async(Dispatchers.Default) {
+                _get(url).let {
+                    when (it == null) {
+                        true -> throw Exception("error for $url")
+                        else -> Pair(key ?: null, it)
                     }
                 }
             }

@@ -40,29 +40,41 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
     private fun loadData() = launch {
         try {
-            val url = "https://drive.google.com/uc?id=1A2DCTrtixpUxZfG_ydfjmM1NlsDqp8lI"
-            val result = HttpClient.get(url).await()
-            payload.value = Pair(AppKeys.VERSION, result.let {
-                CsvUtil.parseCsv(it.string())
-            }.get(1, 1))
+            var urls = mutableListOf<Pair<SectionKeys, String>>()
+            val url1 = "https://drive.google.com/uc?id=1A2DCTrtixpUxZfG_ydfjmM1NlsDqp8lI"
             val url2 = "https://drive.google.com/uc?id=1Q4urg3mSEyRnr_ygaxxHeSFP6QEGpAAB"
-            val result2 = HttpClient.get(url2).await()
-            val secLs = CsvUtil.parseCsv(result2.string()).ary.filterIndexed { idx, _ -> idx > 0 }.map {
-                val url = "https://drive.google.com/uc?id=" + it[3]
-                val key = SectionKeys.valueOf(it[2].toUpperCase())
-                Pair(key, url)
+            val tasksA = listOf(HttpClient.get(url1, AppKeys.VERSION), HttpClient.get(url2, AppKeys.SECTIONS))
+            tasksA.awaitAll().forEach { e ->
+                when (e.first) {
+                    AppKeys.VERSION -> {
+                        payload.value = Pair(AppKeys.VERSION, e.second.let {
+                            CsvUtil.parseCsv(it.body?.string()!!).get(1, 1)
+                        })
+                    }
+                    AppKeys.SECTIONS -> {
+                        urls.addAll(getUrls(CsvUtil.parseCsv(e.second.body?.string()!!)))
+                        payload.value = Pair(AppKeys.SECTIONS, urls)
+                    }
+                }
             }
-            payload.value = Pair(AppKeys.SECTIONS, secLs)
-            val results = secLs.map {
-                Pair(it.first, HttpClient.get(it.second))
-            }.map {
-                Pair(it.first, it.second.await())
+            val tasksB = urls.map {
+                HttpClient.get(it.second, it.first)
             }
-            payload.value = Pair(AppKeys.DATALIST, results.map {
-                Pair(it.first, CsvUtil.parseCsv(it.second.string()))
-            })
+            tasksB.awaitAll().map { e ->
+                Pair(e.first, CsvUtil.parseCsv(e.second.body?.string()!!))
+            }.let {
+                payload.value = Pair(AppKeys.DATALIST, it)
+            }
         } catch (e: Exception) {
             Log.w("yama", "error", e)
+        }
+    }
+
+    private fun getUrls(csv: Csv): List<Pair<SectionKeys, String>> {
+        return csv.ary.filterIndexed { idx, _ -> idx > 0 }.map {
+            val url = "https://drive.google.com/uc?id=" + it[3]
+            val key = SectionKeys.valueOf(it[2].toUpperCase())
+            Pair(key, url)
         }
     }
 
