@@ -113,20 +113,8 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     }
 
     private fun fetchContacts() {
-        val cursor = contentResolver.query(
-            ContactsContract.Contacts.CONTENT_URI,
-            null,
-            null,
-            null,
-            null
-            )
-        cursor?.let {
-            while (it.moveToNext()) {
-                val id = it.getString(it.getColumnIndex(ContactsContract.Contacts._ID))
-                val name = it.getString(it.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME))
-                Log.d("yama", id + ":" + name)
-            }
-        }
+        val util = ContactsUtil(this)
+        util.fetchContacts().forEach { e -> Log.d("yama", e.toString()) }
     }
 
     private fun pushContacts() {

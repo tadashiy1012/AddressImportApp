@@ -67,6 +67,7 @@ class MainFragment : Fragment(), CoroutineScope {
         importBtn.setOnClickListener {
             importBtn.isEnabled = false
             fetchAddressData()
+            Log.d("yama", "continue..")
         }
     }
 
