@@ -54,7 +54,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
                 ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.READ_CONTACTS), MY_REQUEST_RESULT)
             }
         } else {
-            Toast.makeText(this, "permission granted!", Toast.LENGTH_LONG).show()
+            //Toast.makeText(this, "permission granted!", Toast.LENGTH_LONG).show()
             pushContacts()
             fetchContacts()
         }
@@ -130,17 +130,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
     }
 
     private fun pushContacts() {
-        val contentVal = ContentValues()
-        val uri = contentResolver.insert(ContactsContract.RawContacts.CONTENT_URI, contentVal)
-        val id = ContentUris.parseId(uri)
-        contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, "yama")
-        contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.Phone.NUMBER, "0120444444")
-        contentVal.put(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_HOME)
-        contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+        val address = Address(-1, "山崎 義", "ヤマザキ タダシ", "hoge",
+            "000-0000-0000", "000-0000-0000",
+            "hoge@hogemail.com", "hoge@hogemail.com",
+            "1234567890", SectionKeys.KAIHATSU.label
+        )
+        val util = ContactsUtil(this)
+        util.insertValue(address)
     }
 
 }
