@@ -4,7 +4,7 @@ enum class AppKeys {
 
     LOADED,
     VERSION,
-    SECTIONS,
-    DATALIST
+    SECTION_URLS,
+    DATALIST,
 
 }

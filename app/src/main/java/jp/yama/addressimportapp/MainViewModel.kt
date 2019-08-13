@@ -1,5 +1,6 @@
 package jp.yama.addressimportapp
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel;
 
@@ -8,15 +9,17 @@ class MainViewModel(
 ) : ViewModel() {
 
     val loaded = state.getLiveData<List<Pair<AppKeys, Boolean>>>(AppKeys.LOADED.name)
-    val version = state.getLiveData<String>(AppKeys.VERSION.name)
-    val sectionList = state.getLiveData<List<Pair<SectionKeys, String>>>(AppKeys.SECTIONS.name)
-    val dataList = state.getLiveData<List<Pair<SectionKeys, Csv>>>(AppKeys.DATALIST.name)
+    var version: String?
+        get() = state.get<String>(AppKeys.VERSION.name)
+        set(value) = state.set(AppKeys.VERSION.name, value)
+    var urls: List<Pair<SectionKeys, String>>?
+        get() = state.get<List<Pair<SectionKeys, String>>>(AppKeys.SECTION_URLS.name)
+        set(value) = state.set(AppKeys.SECTION_URLS.name, value)
 
     init {
         loaded.value = listOf(
             Pair(AppKeys.VERSION, false),
-            Pair(AppKeys.SECTIONS, false),
-            Pair(AppKeys.DATALIST, false)
+            Pair(AppKeys.SECTION_URLS, false)
         )
     }
 
