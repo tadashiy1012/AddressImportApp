@@ -161,7 +161,6 @@ class MainFragment : Fragment(), CoroutineScope {
         val result = util.findContactId(address)
         Log.d("yama", result.toString())
         util.findContact(result)
-        util.findContact(22L)
     }
 
 }

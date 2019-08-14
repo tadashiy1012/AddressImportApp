@@ -43,7 +43,7 @@ class ContactsUtil(private val ctx: Context) {
         )
         cursor?.let {
             if (it.moveToFirst()) {
-                result = it.getLong(it.getColumnIndex(ContactsContract.Contacts._ID))
+                result = it.getLong(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.CONTACT_ID))
             }
         }
         return result
@@ -51,24 +51,19 @@ class ContactsUtil(private val ctx: Context) {
 
     fun findContact(id: Long) {
         Log.d("yama", "find:${id}")
-        val selection = ContactsContract.Contacts._ID + " = ?"
-        val args = arrayOf(id.toString())
-        val cursor = ctx.contentResolver.query(
-            ContactsContract.Data.CONTENT_URI,
-            null,
-            selection,
-            args,
-            null
-        )
-        cursor?.let {
-            if (it.moveToFirst()) {
-                val name = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME))
-                val kana = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME))
-
-                Log.d("yama", listOf(name, kana).toString())
-            }
-            it.close()
-        }
+        val names = fetchName(id)
+        val phones = fetchPhone(id)
+        val mails = fetchMail(id)
+        val org = fetchOrg(id)
+        val note = fetchNote(id)
+        Log.d("yama", listOf(
+            Arrays.toString(names.toTypedArray()),
+            Arrays.toString(phones.toTypedArray()),
+            Arrays.toString(mails.toTypedArray()),
+            org,
+            note
+        ).toString())
+        // TODO: 結果を返す処理
     }
 
     fun fetchContacts(): List<Address> {
@@ -98,7 +93,7 @@ class ContactsUtil(private val ctx: Context) {
                     }
                 }
                 result.add(Address(id,
-                    names[0], names[1], company,
+                    names[1], names[2], company,
                     phones[0], phones[1],
                     mails[0], mails[1],
                     num, section))
@@ -122,6 +117,8 @@ class ContactsUtil(private val ctx: Context) {
         )
         cursor?.let {
             if (it.moveToFirst()) {
+                // TODO: hashmapとか使えないだろうか
+                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME)) ?: EMPTY)
                 result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME)) ?: EMPTY)
                 result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME)) ?: EMPTY)
             }
@@ -297,7 +294,7 @@ class ContactsUtil(private val ctx: Context) {
     }
 
     fun updateContact(address: Address) {
-
+        // TODO: 作る
     }
 
 }
