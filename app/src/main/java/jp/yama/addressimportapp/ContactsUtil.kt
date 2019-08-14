@@ -10,23 +10,6 @@ import java.util.*
 
 class ContactsUtil(private val ctx: Context) {
 
-    companion object {
-        enum class PhoneTypes(val value: Int) {
-            HOME(ContactsContract.CommonDataKinds.Phone.TYPE_HOME),
-            WORK(ContactsContract.CommonDataKinds.Phone.TYPE_WORK),
-            FAX_HOME(ContactsContract.CommonDataKinds.Phone.TYPE_FAX_HOME),
-            FAX_WORK(ContactsContract.CommonDataKinds.Phone.TYPE_FAX_WORK),
-            MOBILE(ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE),
-            OTHER(ContactsContract.CommonDataKinds.Phone.TYPE_OTHER)
-        }
-        enum class MailTypes(val value: Int) {
-            HOME(ContactsContract.CommonDataKinds.Email.TYPE_HOME),
-            WORK(ContactsContract.CommonDataKinds.Email.TYPE_WORK),
-            MOBILE(ContactsContract.CommonDataKinds.Email.TYPE_MOBILE),
-            OTHER(ContactsContract.CommonDataKinds.Email.TYPE_OTHER)
-        }
-    }
-
     private val EMPTY = "[EMPTY]"
 
     fun findContactId(address: Address): Long {
@@ -49,21 +32,21 @@ class ContactsUtil(private val ctx: Context) {
         return result
     }
 
-    fun findContact(id: Long) {
+    fun findContact(id: Long): Address {
         Log.d("yama", "find:${id}")
         val names = fetchName(id)
         val phones = fetchPhone(id)
         val mails = fetchMail(id)
         val org = fetchOrg(id)
         val note = fetchNote(id)
-        Log.d("yama", listOf(
-            Arrays.toString(names.toTypedArray()),
-            Arrays.toString(phones.toTypedArray()),
-            Arrays.toString(mails.toTypedArray()),
-            org,
-            note
-        ).toString())
-        // TODO: 結果を返す処理
+        val company = org.split(" ")[0]
+        val section = org.split(" ").let {
+            if (it.size >= 2) { it[1] }
+            else { EMPTY }
+        }
+        return Address(id, names["name"]!!, names["kana"]!!, company,
+            phones[0], phones[1], mails[0], mails[1],
+            note, section)
     }
 
     fun fetchContacts(): List<Address> {
@@ -78,7 +61,6 @@ class ContactsUtil(private val ctx: Context) {
         cursor?.let {
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndex(ContactsContract.Contacts._ID))
-                Log.d("yama", id.toString())
                 val names = fetchName(id)
                 val phones = fetchPhone(id)
                 val mails = fetchMail(id)
@@ -93,7 +75,7 @@ class ContactsUtil(private val ctx: Context) {
                     }
                 }
                 result.add(Address(id,
-                    names[1], names[2], company,
+                    names["name"]!!, names["kana"]!!, company,
                     phones[0], phones[1],
                     mails[0], mails[1],
                     num, section))
@@ -103,8 +85,8 @@ class ContactsUtil(private val ctx: Context) {
         return result
     }
 
-    private fun fetchName(id: Long): List<String> {
-        var result = mutableListOf<String>()
+    private fun fetchName(id: Long): Map<String, String> {
+        var map = mutableMapOf<String, String>()
         val cursor = ctx.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
@@ -117,14 +99,13 @@ class ContactsUtil(private val ctx: Context) {
         )
         cursor?.let {
             if (it.moveToFirst()) {
-                // TODO: hashmapとか使えないだろうか
-                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME)) ?: EMPTY)
-                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME)) ?: EMPTY)
-                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME)) ?: EMPTY)
+                map.put("display", it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME)) ?: EMPTY)
+                map.put("name", it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME)) ?: EMPTY)
+                map.put("kana", it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME)) ?: EMPTY)
             }
             it.close()
         }
-        return result
+        return map
     }
 
     private fun fetchPhone(id: Long): List<String> {
@@ -219,10 +200,10 @@ class ContactsUtil(private val ctx: Context) {
     fun insertContact(address: Address) {
         val id = getId()
         insertName(id, address.name, address.kana)
-        insertPhone(id, address.phone, Companion.PhoneTypes.HOME)
-        insertPhone(id, address.phone2, Companion.PhoneTypes.WORK)
-        insertMail(id, address.mail, Companion.MailTypes.HOME)
-        insertMail(id, address.mail2, Companion.MailTypes.WORK)
+        insertPhone(id, address.phone, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
+        insertPhone(id, address.phone2, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
+        insertMail(id, address.mail, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
+        insertMail(id, address.mail2, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
         insertOrg(id, address.org + " " + address.section)
         insertNumber(id, address.number)
     }
@@ -242,21 +223,21 @@ class ContactsUtil(private val ctx: Context) {
         ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
-    private fun insertPhone(id: Long, phone: String, type: PhoneTypes) {
+    private fun insertPhone(id: Long, phone: String, type: Int) {
         val contentVal = ContentValues()
         contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
-        contentVal.put(ContactsContract.CommonDataKinds.Phone.TYPE, type.value)
+        contentVal.put(ContactsContract.CommonDataKinds.Phone.TYPE, type)
         ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
-    private fun insertMail(id: Long, mail: String, type: MailTypes) {
+    private fun insertMail(id: Long, mail: String, type: Int) {
         val contentVal = ContentValues()
         contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Email.ADDRESS, mail)
-        contentVal.put(ContactsContract.CommonDataKinds.Email.TYPE, type.value)
+        contentVal.put(ContactsContract.CommonDataKinds.Email.TYPE, type)
         ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 

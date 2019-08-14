@@ -158,9 +158,9 @@ class MainFragment : Fragment(), CoroutineScope {
             "1234567890", SectionKeys.KAIHATSU.label
         )
         val util = ContactsUtil(ctx)
-        val result = util.findContactId(address)
+        val resultId = util.findContactId(address)
+        val result = util.findContact(resultId)
         Log.d("yama", result.toString())
-        util.findContact(result)
     }
 
 }
