@@ -1,12 +1,12 @@
 package jp.yama.addressimportapp
 
-import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import android.util.Log
+import java.util.*
 
 class ContactsUtil(private val ctx: Context) {
 
@@ -29,11 +29,51 @@ class ContactsUtil(private val ctx: Context) {
 
     private val EMPTY = "[EMPTY]"
 
-    private var resolver: ContentResolver = ctx.contentResolver
+    fun findContactId(address: Address): Long {
+        var result = -1L
+        val projection = null
+        val selection = ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME + " = ?"
+        val args = arrayOf(address.name)
+        val cursor = ctx.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            projection,
+            selection,
+            args,
+            null
+        )
+        cursor?.let {
+            if (it.moveToFirst()) {
+                result = it.getLong(it.getColumnIndex(ContactsContract.Contacts._ID))
+            }
+        }
+        return result
+    }
+
+    fun findContact(id: Long) {
+        Log.d("yama", "find:${id}")
+        val selection = ContactsContract.Contacts._ID + " = ?"
+        val args = arrayOf(id.toString())
+        val cursor = ctx.contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            null,
+            selection,
+            args,
+            null
+        )
+        cursor?.let {
+            if (it.moveToFirst()) {
+                val name = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME))
+                val kana = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME))
+
+                Log.d("yama", listOf(name, kana).toString())
+            }
+            it.close()
+        }
+    }
 
     fun fetchContacts(): List<Address> {
         var result = mutableListOf<Address>()
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.Contacts.CONTENT_URI,
             null,
             null,
@@ -43,6 +83,7 @@ class ContactsUtil(private val ctx: Context) {
         cursor?.let {
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndex(ContactsContract.Contacts._ID))
+                Log.d("yama", id.toString())
                 val names = fetchName(id)
                 val phones = fetchPhone(id)
                 val mails = fetchMail(id)
@@ -69,7 +110,7 @@ class ContactsUtil(private val ctx: Context) {
 
     private fun fetchName(id: Long): List<String> {
         var result = mutableListOf<String>()
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
             ContactsContract.Data.MIMETYPE + " = ? AND " +
@@ -91,7 +132,7 @@ class ContactsUtil(private val ctx: Context) {
 
     private fun fetchPhone(id: Long): List<String> {
         var result = mutableListOf<String>()
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             null,
             ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = " + id,
@@ -116,7 +157,7 @@ class ContactsUtil(private val ctx: Context) {
 
     private fun fetchMail(id: Long): List<String> {
         var result = mutableListOf<String>()
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.CommonDataKinds.Email.CONTENT_URI,
             null,
             ContactsContract.CommonDataKinds.Email.CONTACT_ID + " = " + id,
@@ -141,7 +182,7 @@ class ContactsUtil(private val ctx: Context) {
 
     private fun fetchOrg(id: Long): String {
         var result = EMPTY
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
             ContactsContract.Data.MIMETYPE + " = ? AND " +
@@ -161,7 +202,7 @@ class ContactsUtil(private val ctx: Context) {
 
     private fun fetchNote(id: Long): String {
         var result = EMPTY
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
             ContactsContract.Data.MIMETYPE + " = ? AND " +
@@ -191,7 +232,7 @@ class ContactsUtil(private val ctx: Context) {
 
     private fun getId(): Long {
         val contentVal = ContentValues()
-        val uri = resolver.insert(ContactsContract.RawContacts.CONTENT_URI, contentVal)
+        val uri = ctx.contentResolver.insert(ContactsContract.RawContacts.CONTENT_URI, contentVal)
         return ContentUris.parseId(uri)
     }
 
@@ -201,7 +242,7 @@ class ContactsUtil(private val ctx: Context) {
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, name)
         contentVal.put(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME, kana)
-        resolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
     private fun insertPhone(id: Long, phone: String, type: PhoneTypes) {
@@ -210,7 +251,7 @@ class ContactsUtil(private val ctx: Context) {
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
         contentVal.put(ContactsContract.CommonDataKinds.Phone.TYPE, type.value)
-        resolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
     private fun insertMail(id: Long, mail: String, type: MailTypes) {
@@ -219,7 +260,7 @@ class ContactsUtil(private val ctx: Context) {
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Email.ADDRESS, mail)
         contentVal.put(ContactsContract.CommonDataKinds.Email.TYPE, type.value)
-        resolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
     private fun insertOrg(id: Long, org: String) {
@@ -227,7 +268,7 @@ class ContactsUtil(private val ctx: Context) {
         contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Organization.COMPANY, org)
-        resolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
     private fun insertNumber(id: Long, num: String) {
@@ -235,11 +276,11 @@ class ContactsUtil(private val ctx: Context) {
         contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Note.NOTE, num)
-        resolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
     }
 
     fun removeContacts() {
-        val cursor = resolver.query(
+        val cursor = ctx.contentResolver.query(
             ContactsContract.Contacts.CONTENT_URI,
             null,
             null,
@@ -250,9 +291,13 @@ class ContactsUtil(private val ctx: Context) {
             while (it.moveToNext()) {
                 val key = it.getString(it.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY))
                 val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, key)
-                resolver.delete(uri, null, null)
+                ctx.contentResolver.delete(uri, null, null)
             }
         }
+    }
+
+    fun updateContact(address: Address) {
+
     }
 
 }

@@ -92,7 +92,7 @@ class MainFragment : Fragment(), CoroutineScope {
     }
 
     private fun getDebugMenu() {
-        val items = listOf<String>("read contacts", "put contacts", "put async", "remove contacts")
+        val items = listOf<String>("read contacts", "put contacts", "put async", "remove contacts", "find contact")
         AlertDialog.Builder(this.context)
             .setTitle("debug menu")
             .setItems(items.toTypedArray(), DialogInterface.OnClickListener { _, index ->
@@ -101,6 +101,7 @@ class MainFragment : Fragment(), CoroutineScope {
                     1 -> { pushContacts(this.context!!) }
                     2 -> { putAsync(this.context!!) }
                     3 -> { removeContacts(this.context!!) }
+                    4 -> { findContact(this.context!!) }
                 }
             }).show()
     }
@@ -147,6 +148,20 @@ class MainFragment : Fragment(), CoroutineScope {
     private fun removeContacts(ctx: Context) {
         val util = ContactsUtil(ctx)
         util.removeContacts()
+    }
+
+    private fun findContact(ctx: Context) {
+        val address = Address(
+            -1, "山崎 義", "ヤマザキ タダシ", "hoge",
+            "000-0000-0000", "000-0000-0000",
+            "hoge@hogemail.com", "hoge@hogemail.com",
+            "1234567890", SectionKeys.KAIHATSU.label
+        )
+        val util = ContactsUtil(ctx)
+        val result = util.findContactId(address)
+        Log.d("yama", result.toString())
+        util.findContact(result)
+        util.findContact(22L)
     }
 
 }
