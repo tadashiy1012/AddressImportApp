@@ -11,6 +11,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.ProgressBar
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateVMFactory
 import kotlinx.android.synthetic.main.main_fragment.*
@@ -32,6 +33,7 @@ class MainFragment : Fragment(), CoroutineScope {
 
     private lateinit var viewModel: MainViewModel
     private lateinit var importBtn: Button
+    private lateinit var progressBar: ProgressBar
     private lateinit var debugBtn: Button
 
     override fun onCreateView(
@@ -40,6 +42,7 @@ class MainFragment : Fragment(), CoroutineScope {
     ): View? {
         val view = inflater.inflate(R.layout.main_fragment, container, false)
         importBtn = view.findViewById(R.id.buttonA)
+        progressBar = view.findViewById(R.id.progressBar)
         debugBtn = view.findViewById(R.id.debugBtn)
         return view
     }
@@ -64,11 +67,13 @@ class MainFragment : Fragment(), CoroutineScope {
             when(it.first) {
                 AppKeys.VERSION -> viewModel.version = (it.second as String)
                 AppKeys.SECTION_URLS -> viewModel.urls = (it.second as List<Pair<SectionKeys, String>>)
+                else -> {}
             }
             viewModel.toggleLoaded(it.first)
         })
         importBtn.setOnClickListener {
             importBtn.isEnabled = false
+            progressBar.visibility = ProgressBar.VISIBLE
             fetchAddressData()
             Log.d("yama", "continue..")
         }
@@ -85,6 +90,7 @@ class MainFragment : Fragment(), CoroutineScope {
             tasks?.awaitAll()?.map {
                 Log.d("yama", it.toString())
             }
+            progressBar.visibility = ProgressBar.INVISIBLE
             importBtn.isEnabled = true
         } catch (e: Exception) {
             Log.e("yama", "error!", e)
@@ -102,6 +108,7 @@ class MainFragment : Fragment(), CoroutineScope {
                     2 -> { putAsync(this.context!!) }
                     3 -> { removeContacts(this.context!!) }
                     4 -> { findContact(this.context!!) }
+                    else -> {}
                 }
             }).show()
     }
