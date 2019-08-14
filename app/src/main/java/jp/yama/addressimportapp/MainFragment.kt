@@ -1,5 +1,7 @@
 package jp.yama.addressimportapp
 
+import android.app.AlertDialog
+import android.content.DialogInterface
 import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.util.Log
@@ -31,6 +33,7 @@ class MainFragment : Fragment(), CoroutineScope {
 
     private lateinit var viewModel: MainViewModel
     private lateinit var importBtn: Button
+    private lateinit var debugBtn: Button
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -38,6 +41,7 @@ class MainFragment : Fragment(), CoroutineScope {
     ): View? {
         val view = inflater.inflate(R.layout.main_fragment, container, false)
         importBtn = view.findViewById(R.id.buttonA)
+        debugBtn = view.findViewById(R.id.debugBtn)
         return view
     }
 
@@ -69,6 +73,9 @@ class MainFragment : Fragment(), CoroutineScope {
             fetchAddressData()
             Log.d("yama", "continue..")
         }
+        debugBtn.setOnClickListener {
+            getDebugMenu()
+        }
     }
 
     private fun fetchAddressData() = launch {
@@ -83,6 +90,34 @@ class MainFragment : Fragment(), CoroutineScope {
         } catch (e: Exception) {
             Log.e("yama", "error!", e)
         }
+    }
+
+    private fun getDebugMenu() {
+        val items = listOf<String>("read contacts", "put contacts")
+        AlertDialog.Builder(this.context)
+            .setTitle("debug menu")
+            .setItems(items.toTypedArray(), DialogInterface.OnClickListener { _, index ->
+                when (index) {
+                    0 -> { fetchContacts() }
+                    1 -> { pushContacts() }
+                }
+            }).show()
+    }
+
+
+    private fun fetchContacts() {
+        val util = ContactsUtil(this.context!!)
+        util.fetchContacts().forEach { e -> Log.d("yama", e.toString()) }
+    }
+
+    private fun pushContacts() {
+        val address = Address(-1, "山崎 義", "ヤマザキ タダシ", "hoge",
+            "000-0000-0000", "000-0000-0000",
+            "hoge@hogemail.com", "hoge@hogemail.com",
+            "1234567890", SectionKeys.KAIHATSU.label
+        )
+        val util = ContactsUtil(this.context!!)
+        util.insertValue(address)
     }
 
 }

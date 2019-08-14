@@ -55,8 +55,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             }
         } else {
             //Toast.makeText(this, "permission granted!", Toast.LENGTH_LONG).show()
-            pushContacts()
-            fetchContacts()
         }
     }
 
@@ -110,21 +108,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             val key = SectionKeys.valueOf(it[2].toUpperCase())
             Pair(key, url)
         }
-    }
-
-    private fun fetchContacts() {
-        val util = ContactsUtil(this)
-        util.fetchContacts().forEach { e -> Log.d("yama", e.toString()) }
-    }
-
-    private fun pushContacts() {
-        val address = Address(-1, "山崎 義", "ヤマザキ タダシ", "hoge",
-            "000-0000-0000", "000-0000-0000",
-            "hoge@hogemail.com", "hoge@hogemail.com",
-            "1234567890", SectionKeys.KAIHATSU.label
-        )
-        val util = ContactsUtil(this)
-        util.insertValue(address)
     }
 
 }

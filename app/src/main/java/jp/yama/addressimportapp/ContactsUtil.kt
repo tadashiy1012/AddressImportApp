@@ -26,6 +26,8 @@ class ContactsUtil(private val ctx: Context) {
         }
     }
 
+    private val EMPTY = "[EMPTY]"
+
     private var resolver: ContentResolver = ctx.contentResolver
 
     fun fetchContacts(): List<Address> {
@@ -43,9 +45,21 @@ class ContactsUtil(private val ctx: Context) {
                 val names = fetchName(id)
                 val phones = fetchPhone(id)
                 val mails = fetchMail(id)
-                val org = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)).split(" ")
-                val num = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE))
-                result.add(Address(id, names[0], names[1], org[0], phones[0], phones[1], mails[0], mails[1], num, org[1]))
+                val org = fetchOrg(id)
+                val num = fetchNote(id)
+                val company = org.split(" ")[0]
+                val section = org.split(" ").let {
+                    if (it.size >= 2) {
+                        it[1]
+                    } else {
+                        EMPTY
+                    }
+                }
+                result.add(Address(id,
+                    names[0], names[1], company,
+                    phones[0], phones[1],
+                    mails[0], mails[1],
+                    num, section))
             }
             it.close()
         }
@@ -57,15 +71,19 @@ class ContactsUtil(private val ctx: Context) {
         val cursor = resolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
-            ContactsContract.Data.MIMETYPE + " = ?",
-            arrayOf(ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE),
-            ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME
+            ContactsContract.Data.MIMETYPE + " = ? AND " +
+                    ContactsContract.CommonDataKinds.StructuredName.CONTACT_ID  + " = " + id,
+            arrayOf(
+                ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE
+            ),
+            null
         )
         cursor?.let {
-            if (cursor.moveToFirst()) {
-                result.add(cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME)))
-                result.add(cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME)))
+            if (it.moveToFirst()) {
+                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME)) ?: EMPTY)
+                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME)) ?: EMPTY)
             }
+            it.close()
         }
         return result
     }
@@ -81,9 +99,16 @@ class ContactsUtil(private val ctx: Context) {
         )
         cursor?.let {
             while (it.moveToNext()) {
-                result.add(cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DATA)))
+                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DATA)) ?: EMPTY)
             }
             it.close()
+        }
+        result.apply {
+            if (this.size < 2) {
+                for (i in 1..(2 - this.size)) {
+                    this.add(EMPTY)
+                }
+            }
         }
         return result
     }
@@ -99,16 +124,56 @@ class ContactsUtil(private val ctx: Context) {
         )
         cursor?.let {
             while (it.moveToNext()) {
-                result.add(cursor.getString(cursor.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA)))
+                result.add(it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.Email.DATA)) ?: EMPTY)
+            }
+            it.close()
+        }
+        result.apply {
+            if (this.size < 2) {
+                for (i in 1..(2 - this.size)) {
+                    this.add(EMPTY)
+                }
+            }
+        }
+        return result
+    }
+
+    private fun fetchOrg(id: Long): String {
+        var result = ""
+        val cursor = resolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            null,
+            ContactsContract.Data.MIMETYPE + " = ? AND " +
+                    ContactsContract.CommonDataKinds.Organization.CONTACT_ID  + " = " + id,
+            arrayOf(ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE),
+            null
+        )
+        cursor?.let {
+            if (it.moveToFirst()) {
+                result = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.Organization.COMPANY)) ?: EMPTY
             }
             it.close()
         }
         return result
     }
 
-    private fun fetchEtc(id: Long): List<String> {
-        var result = mutableListOf<String>()
-        // TODO ここから
+
+    private fun fetchNote(id: Long): String {
+        var result = ""
+        val cursor = resolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            null,
+            ContactsContract.Data.MIMETYPE + " = ? AND " +
+                    ContactsContract.CommonDataKinds.Note.CONTACT_ID  + " = " + id,
+            arrayOf(ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE),
+            null
+        )
+        cursor?.let {
+            if (it.moveToFirst()) {
+                result = it.getString(it.getColumnIndex(ContactsContract.CommonDataKinds.Note.NOTE)) ?: EMPTY
+            }
+            it.close()
+        }
         return result
     }
 
