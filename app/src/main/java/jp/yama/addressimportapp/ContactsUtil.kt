@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
+import android.net.Uri
 import android.provider.ContactsContract
 import android.util.Log
 
@@ -139,7 +140,7 @@ class ContactsUtil(private val ctx: Context) {
     }
 
     private fun fetchOrg(id: Long): String {
-        var result = ""
+        var result = EMPTY
         val cursor = resolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
@@ -159,7 +160,7 @@ class ContactsUtil(private val ctx: Context) {
 
 
     private fun fetchNote(id: Long): String {
-        var result = ""
+        var result = EMPTY
         val cursor = resolver.query(
             ContactsContract.Data.CONTENT_URI,
             null,
@@ -177,7 +178,7 @@ class ContactsUtil(private val ctx: Context) {
         return result
     }
 
-    fun insertValue(address: Address) {
+    fun insertContact(address: Address) {
         val id = getId()
         insertName(id, address.name, address.kana)
         insertPhone(id, address.phone, Companion.PhoneTypes.HOME)
@@ -235,6 +236,23 @@ class ContactsUtil(private val ctx: Context) {
         contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
         contentVal.put(ContactsContract.CommonDataKinds.Note.NOTE, num)
         resolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
+    }
+
+    fun removeContacts() {
+        val cursor = resolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            null,
+            null,
+            null,
+            null
+        )
+        cursor?.let {
+            while (it.moveToNext()) {
+                val key = it.getString(it.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY))
+                val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, key)
+                resolver.delete(uri, null, null)
+            }
+        }
     }
 
 }

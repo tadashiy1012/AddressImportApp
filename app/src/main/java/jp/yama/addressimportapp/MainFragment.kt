@@ -1,6 +1,7 @@
 package jp.yama.addressimportapp
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.DialogInterface
 import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
@@ -10,12 +11,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.TextView
 import androidx.lifecycle.Observer
 import androidx.lifecycle.SavedStateVMFactory
 import kotlinx.android.synthetic.main.main_fragment.*
 import kotlinx.coroutines.*
-import okhttp3.Response
 import java.lang.Exception
 import kotlin.coroutines.CoroutineContext
 
@@ -93,31 +92,61 @@ class MainFragment : Fragment(), CoroutineScope {
     }
 
     private fun getDebugMenu() {
-        val items = listOf<String>("read contacts", "put contacts")
+        val items = listOf<String>("read contacts", "put contacts", "put async", "remove contacts")
         AlertDialog.Builder(this.context)
             .setTitle("debug menu")
             .setItems(items.toTypedArray(), DialogInterface.OnClickListener { _, index ->
                 when (index) {
-                    0 -> { fetchContacts() }
-                    1 -> { pushContacts() }
+                    0 -> { fetchContacts(this.context!!) }
+                    1 -> { pushContacts(this.context!!) }
+                    2 -> { putAsync(this.context!!) }
+                    3 -> { removeContacts(this.context!!) }
                 }
             }).show()
     }
 
 
-    private fun fetchContacts() {
-        val util = ContactsUtil(this.context!!)
+    private fun fetchContacts(ctx: Context) {
+        val util = ContactsUtil(ctx)
         util.fetchContacts().forEach { e -> Log.d("yama", e.toString()) }
     }
 
-    private fun pushContacts() {
+    private fun pushContacts(ctx: Context) {
         val address = Address(-1, "山崎 義", "ヤマザキ タダシ", "hoge",
             "000-0000-0000", "000-0000-0000",
             "hoge@hogemail.com", "hoge@hogemail.com",
             "1234567890", SectionKeys.KAIHATSU.label
         )
-        val util = ContactsUtil(this.context!!)
-        util.insertValue(address)
+        val util = ContactsUtil(ctx)
+        util.insertContact(address)
+    }
+
+    private fun putAsync(ctx: Context) = launch {
+        try {
+            val deferred = async {
+                Log.d("yama", "pending..")
+                val address = Address(
+                    -1, "山崎 義", "ヤマザキ タダシ", "hoge",
+                    "000-0000-0000", "000-0000-0000",
+                    "hoge@hogemail.com", "hoge@hogemail.com",
+                    "1234567890", SectionKeys.KAIHATSU.label
+                )
+                val util = ContactsUtil(ctx)
+                util.insertContact(address)
+                true
+            }
+            Log.d("yama", "continue")
+            deferred.await().let {
+                Log.d("yama", "compl!")
+            }
+        } catch (e: Exception) {
+            Log.e("yama", "error!", e)
+        }
+    }
+
+    private fun removeContacts(ctx: Context) {
+        val util = ContactsUtil(ctx)
+        util.removeContacts()
     }
 
 }
