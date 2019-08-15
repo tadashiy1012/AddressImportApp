@@ -93,9 +93,7 @@ class MainFragment : Fragment(), CoroutineScope {
             }?.flatten()
             Log.d("yama", "size:${ls?.size}")
             val util = ContactsUtil(ctx)
-            val tasks2 = ls?.take(100)?.map { e ->
-                util.insertContactAsync(e)
-            }
+            val tasks2 = util.batchInsertContactAsync(ls?.take(200)!!)
             val results = tasks2?.awaitAll()
             Log.d("yama", results?.size.toString())
             progressBar.visibility = ProgressBar.INVISIBLE

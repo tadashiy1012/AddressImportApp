@@ -7,10 +7,9 @@ import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.*
 import java.util.*
+import kotlin.collections.ArrayList
 
 class ContactsUtil(private val ctx: Context) {
 
@@ -201,141 +200,95 @@ class ContactsUtil(private val ctx: Context) {
         return result
     }
 
-    fun batchInsertContact(address: Address): List<Long> {
-        val phoneType = ContactsContract.CommonDataKinds.Phone.TYPE_WORK
-        val mailType = ContactsContract.CommonDataKinds.Email.TYPE_WORK
-        val ope = arrayListOf<ContentProviderOperation>()
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, address.name)
-            .withValue(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME, address.kana).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, address.phone)
-            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, address.phone2)
-            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, address.mail)
-            .withValue(ContactsContract.CommonDataKinds.Email.TYPE, mailType).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, address.mail2)
-            .withValue(ContactsContract.CommonDataKinds.Email.TYPE, mailType).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, address.org).build())
-        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
-            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
-            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
-            .withValue(ContactsContract.CommonDataKinds.Note.NOTE, address.number).build())
-        Log.d("yama", ope.toString())
-        return ctx.contentResolver.applyBatch(ContactsContract.AUTHORITY, ope).let {
-            it.map { e -> ContentUris.parseId(e.uri) }
+    suspend fun batchInsertContactAsync(addressList: List<Address>): MutableList<Deferred<Long>> {
+        var result = mutableListOf<Deferred<Long>>()
+        addressList.forEach { e ->
+            val ope = getOperations(e);
+            result.add(execBatchInsertAsync(ope))
         }
+        return result
     }
 
-    suspend fun insertContactAsync(address: Address) = coroutineScope {
+    private suspend fun execBatchInsertAsync(operations: ArrayList<ContentProviderOperation>) = coroutineScope {
         async(Dispatchers.Default) {
-            insertContact(address)?.let {
-                when (it == null) {
-                    true -> throw Exception("error id:")
-                    else -> it
-                }
+            ctx.contentResolver.applyBatch(ContactsContract.AUTHORITY, operations).let {
+                ContentUris.parseId(it.first().uri)
             }
         }
     }
 
-    fun insertContact(address: Address): Long {
-        val id = getId()
-        insertName(id, address.name, address.kana)
-        insertPhone(id, address.phone, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
-        insertPhone(id, address.phone2, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
-        insertMail(id, address.mail, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
-        insertMail(id, address.mail2, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
-        insertOrg(id, address.org + " " + address.section)
-        insertNumber(id, address.number)
-        return id
+    private fun getOperations(address: Address): ArrayList<ContentProviderOperation> {
+        val phoneType = ContactsContract.CommonDataKinds.Phone.TYPE_WORK
+        val mailType = ContactsContract.CommonDataKinds.Email.TYPE_WORK
+        val operations = arrayListOf<ContentProviderOperation>(
+            ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI)
+                .withValues(ContentValues())
+                .build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE
+                )
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, address.name)
+                .withValue(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME, address.kana).build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, address.phone)
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType).build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, address.phone2)
+                .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType).build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, address.mail)
+                .withValue(ContactsContract.CommonDataKinds.Email.TYPE, mailType).build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, address.mail2)
+                .withValue(ContactsContract.CommonDataKinds.Email.TYPE, mailType).build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(
+                    ContactsContract.Data.MIMETYPE,
+                    ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE
+                )
+                .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, address.org).build(),
+            ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+                .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+                .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
+                .withValue(ContactsContract.CommonDataKinds.Note.NOTE, address.number).build()
+        )
+        return operations
     }
 
-    private fun getId(): Long {
-        val contentVal = ContentValues()
-        val uri = ctx.contentResolver.insert(ContactsContract.RawContacts.CONTENT_URI, contentVal)
-        return ContentUris.parseId(uri)
+    private suspend fun execDeleteAsync(uri: Uri) = coroutineScope {
+        async(Dispatchers.Default) {
+            ctx.contentResolver.delete(uri, null, null)
+        }
     }
 
-    private fun insertName(id: Long, name: String, kana: String) {
-        val contentVal = ContentValues()
-        contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, name)
-        contentVal.put(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME, kana)
-        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
-    }
-
-    private fun insertPhone(id: Long, phone: String, type: Int) {
-        val contentVal = ContentValues()
-        contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
-        contentVal.put(ContactsContract.CommonDataKinds.Phone.TYPE, type)
-        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
-    }
-
-    private fun insertMail(id: Long, mail: String, type: Int) {
-        val contentVal = ContentValues()
-        contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.Email.ADDRESS, mail)
-        contentVal.put(ContactsContract.CommonDataKinds.Email.TYPE, type)
-        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
-    }
-
-    private fun insertOrg(id: Long, org: String) {
-        val contentVal = ContentValues()
-        contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.Organization.COMPANY, org)
-        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
-    }
-
-    private fun insertNumber(id: Long, num: String) {
-        val contentVal = ContentValues()
-        contentVal.put(ContactsContract.Data.RAW_CONTACT_ID, id)
-        contentVal.put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Note.CONTENT_ITEM_TYPE)
-        contentVal.put(ContactsContract.CommonDataKinds.Note.NOTE, num)
-        ctx.contentResolver.insert(ContactsContract.Data.CONTENT_URI, contentVal)
-    }
-
-    fun removeContacts() {
-        val cursor = ctx.contentResolver.query(
+    suspend fun removeContactsAsync(): MutableList<Deferred<Int>> {
+        var result = mutableListOf<Deferred<Int>>()
+        ctx.contentResolver.query(
             ContactsContract.Contacts.CONTENT_URI,
             null,
             null,
             null,
             null
-        )
-        cursor?.let {
+        )?.let {
             while (it.moveToNext()) {
                 val key = it.getString(it.getColumnIndex(ContactsContract.Contacts.LOOKUP_KEY))
                 val uri = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, key)
-                ctx.contentResolver.delete(uri, null, null)
+                result.add(execDeleteAsync(uri))
             }
         }
-    }
-
-    fun updateContact(address: Address) {
-        // TODO: 作る
+        return result
     }
 
 }
