@@ -83,7 +83,7 @@ class MainFragment : Fragment(), CoroutineScope {
             Log.d("yama", "continue..")
         }
         debugBtn.setOnClickListener {
-            getDebugMenu()
+            DebugFuns.getAlert(this.context!!).show()
         }
     }
 
@@ -100,22 +100,6 @@ class MainFragment : Fragment(), CoroutineScope {
         } catch (e: Exception) {
             Log.e("yama", "error!", e)
         }
-    }
-
-    private fun getDebugMenu() {
-        val items = listOf<String>("read contacts", "put contacts", "put async", "remove contacts", "find contact")
-        AlertDialog.Builder(this.context)
-            .setTitle("debug menu")
-            .setItems(items.toTypedArray(), DialogInterface.OnClickListener { _, index ->
-                when (index) {
-                    0 -> { DebugFuns.fetchContacts(this.context!!) }
-                    1 -> { DebugFuns.pushContacts(this.context!!) }
-                    2 -> { DebugFuns.putAsync(this.context!!) }
-                    3 -> { DebugFuns.removeContacts(this.context!!) }
-                    4 -> { DebugFuns.findContact(this.context!!) }
-                    else -> {}
-                }
-            }).show()
     }
 
 }

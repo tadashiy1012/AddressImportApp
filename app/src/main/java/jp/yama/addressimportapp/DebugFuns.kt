@@ -1,6 +1,8 @@
 package jp.yama.addressimportapp
 
+import android.app.AlertDialog
 import android.content.Context
+import android.content.DialogInterface
 import android.util.Log
 import kotlinx.coroutines.*
 import java.lang.Exception
@@ -64,6 +66,23 @@ object DebugFuns {
         } catch (e: Exception) {
             Log.e("yama", "error!", e)
         }
+    }
+
+    fun getAlert(ctx: Context): AlertDialog {
+        val items = listOf<String>("read contacts", "put contacts", "put async", "remove contacts", "find contact")
+        val dialog = AlertDialog.Builder(ctx)
+            .setTitle("debug menu")
+            .setItems(items.toTypedArray(), DialogInterface.OnClickListener { _, index ->
+                when (index) {
+                    0 -> { DebugFuns.fetchContacts(ctx) }
+                    1 -> { DebugFuns.pushContacts(ctx) }
+                    2 -> { DebugFuns.putAsync(ctx) }
+                    3 -> { DebugFuns.removeContacts(ctx) }
+                    4 -> { DebugFuns.findContact(ctx) }
+                    else -> {}
+                }
+            }).create()
+        return dialog
     }
 
 }
