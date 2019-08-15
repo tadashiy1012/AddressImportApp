@@ -76,6 +76,11 @@ class MainFragment : Fragment(), CoroutineScope {
         debugBtn.setOnClickListener {
             DebugFuns.getAlert(this.context!!).show()
         }
+        if (BuildConfig.DEBUG) {
+            Log.d("yama", "debug mode")
+            debugBtn.isEnabled = true
+            debugBtn.visibility = Button.VISIBLE
+        }
     }
 
     private fun fetchAddressData(ctx: Context) = launch {
