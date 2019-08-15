@@ -27,8 +27,6 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
 
     private val MY_REQUEST_RESULT = 1
 
-    val payload = MutableLiveData<Pair<AppKeys, Any>>()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -87,13 +85,13 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             tasksA.awaitAll().forEach { e ->
                 when (e.first) {
                     AppKeys.VERSION -> {
-                        payload.value = Pair(AppKeys.VERSION, e.second.let {
+                        AppState.instance.payload.value = Pair(AppKeys.VERSION, e.second.let {
                             CsvUtil.parseCsv(it.body?.string()!!).get(1, 1)
                         })
                     }
                     AppKeys.SECTION_URLS -> {
                         val urls = getUrls(CsvUtil.parseCsv(e.second.body?.string()!!))
-                        payload.value = Pair(AppKeys.SECTION_URLS, urls)
+                        AppState.instance.payload.value = Pair(AppKeys.SECTION_URLS, urls)
                     }
                 }
             }

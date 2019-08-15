@@ -57,16 +57,21 @@ class MainFragment : Fragment(), CoroutineScope {
         viewModel = ViewModelProviders.of(this, factory).get(MainViewModel::class.java)
         viewModel.loaded.observe(this, Observer {
             Log.d("yama", it.toString())
-            val filtered = it.filter { e -> e.second !== true }
+            val filtered = it.filter { e -> !e.second }
             if (filtered.size == 0) {
                 Log.d("yama", "loaded!")
                 buttonA.isEnabled = true
             }
         })
-        (activity as MainActivity).payload.observe(this, Observer {
+        AppState.instance.payload.observe(this, Observer {
             when(it.first) {
-                AppKeys.VERSION -> viewModel.version = (it.second as String)
-                AppKeys.SECTION_URLS -> viewModel.urls = (it.second as List<Pair<SectionKeys, String>>)
+                AppKeys.VERSION -> {
+                    val value = it.second
+                    viewModel.version = if (value is String) { value } else { null }
+                }
+                AppKeys.SECTION_URLS -> {
+                    viewModel.urls = (it.second as? List<Pair<SectionKeys, String>>)
+                }
                 else -> {}
             }
             viewModel.toggleLoaded(it.first)
