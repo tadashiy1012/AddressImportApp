@@ -68,15 +68,26 @@ object DebugFuns {
         }
     }
 
+    fun putBatch(ctx: Context) {
+        val address = Address(-1, "山崎 義", "ヤマザキ タダシ", "hoge",
+            "000-0000-0000", "000-0000-0000",
+            "hoge@hogemail.com", "hoge@hogemail.com",
+            "1234567890", SectionKeys.KAIHATSU.label
+        )
+        val util = ContactsUtil(ctx)
+        val result = util.batchInsertContact(address)
+        Log.d("yama", result.toString())
+    }
+
     fun getAlert(ctx: Context): AlertDialog {
-        val items = listOf<String>("read contacts", "put contacts", "put async", "remove contacts", "find contact")
+        val items = listOf<String>("read contacts", "put contacts", "put batch", "remove contacts", "find contact")
         val dialog = AlertDialog.Builder(ctx)
             .setTitle("debug menu")
             .setItems(items.toTypedArray(), DialogInterface.OnClickListener { _, index ->
                 when (index) {
                     0 -> { DebugFuns.fetchContacts(ctx) }
                     1 -> { DebugFuns.pushContacts(ctx) }
-                    2 -> { DebugFuns.putAsync(ctx) }
+                    2 -> { DebugFuns.putBatch(ctx) }
                     3 -> { DebugFuns.removeContacts(ctx) }
                     4 -> { DebugFuns.findContact(ctx) }
                     else -> {}
