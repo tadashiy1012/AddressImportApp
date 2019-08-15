@@ -85,13 +85,12 @@ class MainActivity : AppCompatActivity(), CoroutineScope {
             tasksA.awaitAll().forEach { e ->
                 when (e.first) {
                     AppKeys.VERSION -> {
-                        AppState.instance.payload.value = Pair(AppKeys.VERSION, e.second.let {
+                        AppState.instance.version.value = e.second.let {
                             CsvUtil.parseCsv(it.body?.string()!!).get(1, 1)
-                        })
+                        }
                     }
                     AppKeys.SECTION_URLS -> {
-                        val urls = getUrls(CsvUtil.parseCsv(e.second.body?.string()!!))
-                        AppState.instance.payload.value = Pair(AppKeys.SECTION_URLS, urls)
+                        AppState.instance.urls.value = getUrls(CsvUtil.parseCsv(e.second.body?.string()!!))
                     }
                 }
             }

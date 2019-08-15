@@ -9,12 +9,6 @@ class MainViewModel(
 ) : ViewModel() {
 
     val loaded = state.getLiveData<List<Pair<AppKeys, Boolean>>>(AppKeys.LOADED.name)
-    var version: String?
-        get() = state.get<String>(AppKeys.VERSION.name)
-        set(value) = state.set(AppKeys.VERSION.name, value)
-    var urls: List<Pair<SectionKeys, String>>?
-        get() = state.get<List<Pair<SectionKeys, String>>>(AppKeys.SECTION_URLS.name)
-        set(value) = state.set(AppKeys.SECTION_URLS.name, value)
 
     init {
         loaded.value = listOf(

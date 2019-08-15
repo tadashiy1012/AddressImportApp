@@ -49,32 +49,22 @@ class MainFragment : Fragment(), CoroutineScope {
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        val factory = SavedStateVMFactory(this, Bundle().apply {
-            arguments?.getString(AppKeys.VERSION.name)?.let {
-                this.putString(AppKeys.VERSION.name, it)
-            }
-        })
+        val factory = SavedStateVMFactory(this)
         viewModel = ViewModelProviders.of(this, factory).get(MainViewModel::class.java)
         viewModel.loaded.observe(this, Observer {
             Log.d("yama", it.toString())
             val filtered = it.filter { e -> !e.second }
-            if (filtered.size == 0) {
+            if (filtered.size == 0 || AppState.instance.loaded.value!!) {
                 Log.d("yama", "loaded!")
                 buttonA.isEnabled = true
+                AppState.instance.loaded.value = true
             }
         })
-        AppState.instance.payload.observe(this, Observer {
-            when(it.first) {
-                AppKeys.VERSION -> {
-                    val value = it.second
-                    viewModel.version = if (value is String) { value } else { null }
-                }
-                AppKeys.SECTION_URLS -> {
-                    viewModel.urls = (it.second as? List<Pair<SectionKeys, String>>)
-                }
-                else -> {}
-            }
-            viewModel.toggleLoaded(it.first)
+        AppState.instance.version.observe(this, Observer {
+            viewModel.toggleLoaded(AppKeys.VERSION)
+        })
+        AppState.instance.urls.observe(this, Observer {
+            viewModel.toggleLoaded(AppKeys.SECTION_URLS)
         })
         importBtn.setOnClickListener {
             importBtn.isEnabled = false
@@ -89,7 +79,7 @@ class MainFragment : Fragment(), CoroutineScope {
 
     private fun fetchAddressData() = launch {
         try {
-            val tasks = viewModel.urls?.map { e ->
+            val tasks = AppState.instance.urls.value?.map { e ->
                 HttpClient.get(e.second, e.first)
             }
             tasks?.awaitAll()?.map {
