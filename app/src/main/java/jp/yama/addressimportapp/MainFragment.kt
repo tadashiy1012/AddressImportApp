@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.DialogInterface
 import androidx.lifecycle.ViewModelProviders
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -69,7 +70,7 @@ class MainFragment : Fragment(), CoroutineScope {
         importBtn.setOnClickListener {
             importBtn.isEnabled = false
             progressBar.visibility = ProgressBar.VISIBLE
-            fetchAddressData()
+            fetchAddressData(this.context!!)
             Log.d("yama", "continue..")
         }
         debugBtn.setOnClickListener {
@@ -77,19 +78,33 @@ class MainFragment : Fragment(), CoroutineScope {
         }
     }
 
-    private fun fetchAddressData() = launch {
+    private fun fetchAddressData(ctx: Context) = launch {
+        val start = SystemClock.uptimeMillis()
         try {
             val tasks = AppState.instance.urls.value?.map { e ->
                 HttpClient.get(e.second, e.first)
             }
-            tasks?.awaitAll()?.map {
+            val ls = tasks?.awaitAll()?.map {
                 Log.d("yama", it.toString())
+                val csv = CsvUtil.parseCsv(it.second.body?.string()!!)
+                csv.ary.filterIndexed { idx, _ -> idx > 0 }.map { e ->
+                    Address.builder(it.first!!, e)
+                }
+            }?.flatten()
+            Log.d("yama", "size:${ls?.size}")
+            val util = ContactsUtil(ctx)
+            val tasks2 = ls?.take(100)?.map { e ->
+                util.insertContactAsync(e)
             }
+            val results = tasks2?.awaitAll()
+            Log.d("yama", results?.size.toString())
             progressBar.visibility = ProgressBar.INVISIBLE
             importBtn.isEnabled = true
         } catch (e: Exception) {
             Log.e("yama", "error!", e)
         }
+        val end = SystemClock.uptimeMillis()
+        Log.d("yama", "elapse: ${end - start}")
     }
 
 }

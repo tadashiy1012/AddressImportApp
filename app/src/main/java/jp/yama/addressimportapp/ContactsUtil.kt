@@ -1,11 +1,15 @@
 package jp.yama.addressimportapp
 
+import android.content.ContentProviderOperation
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
 import android.provider.ContactsContract
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import java.util.*
 
 class ContactsUtil(private val ctx: Context) {
@@ -197,7 +201,53 @@ class ContactsUtil(private val ctx: Context) {
         return result
     }
 
-    fun insertContact(address: Address) {
+    fun batchInsertContact(address: Address): Long {
+        val ope = mutableListOf<ContentProviderOperation>()
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.RawContacts.CONTENT_URI).build())
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.GIVEN_NAME, name)
+            .withValue(ContactsContract.CommonDataKinds.StructuredName.PHONETIC_GIVEN_NAME, kana).build())
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYP)
+            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone1)
+            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType).build())
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYP)
+            .withValue(ContactsContract.CommonDataKinds.Phone.NUMBER, phone2)
+            .withValue(ContactsContract.CommonDataKinds.Phone.TYPE, phoneType).build())
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, mail1)
+            .withValue(ContactsContract.CommonDataKinds.Email.TYPE, mailType).build())
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.Email.ADDRESS, mail2)
+            .withValue(ContactsContract.CommonDataKinds.Email.TYPE, mailType).build())
+        ope.add(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_UR)
+            .withValueBackReference(ContactsContract.Data.RAW_CONTACT_ID, 0)
+            .withValue(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE)
+            .withValue(ContactsContract.CommonDataKinds.Organization.COMPANY, org).build())
+
+    }
+
+    suspend fun insertContactAsync(address: Address) = coroutineScope {
+        async(Dispatchers.Default) {
+            insertContact(address)?.let {
+                when (it == null) {
+                    true -> throw Exception("error id:")
+                    else -> it
+                }
+            }
+        }
+    }
+
+    fun insertContact(address: Address): Long {
         val id = getId()
         insertName(id, address.name, address.kana)
         insertPhone(id, address.phone, ContactsContract.CommonDataKinds.Phone.TYPE_WORK)
@@ -206,6 +256,7 @@ class ContactsUtil(private val ctx: Context) {
         insertMail(id, address.mail2, ContactsContract.CommonDataKinds.Email.TYPE_WORK)
         insertOrg(id, address.org + " " + address.section)
         insertNumber(id, address.number)
+        return id
     }
 
     private fun getId(): Long {
